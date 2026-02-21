@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>예정공정률 S-Curve 생성기</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        /* 커스텀 스크롤바 */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb { background: #c1c1c1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #a8a8a8; }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen p-4 md:p-8 font-sans text-gray-800">
+
+    <div class="max-w-7xl mx-auto bg-white rounded-xl shadow-lg overflow-hidden">
+        <div class="bg-blue-600 text-white px-6 py-4">
+            <h1 class="text-2xl font-bold">📈 공사예정공정표 S-Curve 생성기</h1>
+            <p class="text-blue-100 text-sm mt-1">월별 공정률을 입력하면 누계 공정률 S-Curve가 자동으로 생성됩니다.</p>
+        </div>
+
+        <div class="flex flex-col md:flex-row h-[calc(100vh-150px)] min-h-[600px]">
+            <!-- 좌측: 데이터 입력 부 -->
+            <div class="w-full md:w-1/3 border-r border-gray-200 p-4 flex flex-col h-full">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-lg font-semibold">데이터 입력 (%)</h2>
+                    <div class="space-x-2">
+                        <button onclick="addRow()" class="px-3 py-1 bg-blue-50 text-blue-600 rounded-md text-sm font-medium hover:bg-blue-100 transition">행 추가</button>
+                        <button onclick="removeRow()" class="px-3 py-1 bg-red-50 text-red-600 rounded-md text-sm font-medium hover:bg-red-100 transition">행 삭제</button>
+                    </div>
+                </div>
+
+                <div class="overflow-y-auto flex-grow bg-gray-50 rounded-lg p-2 border border-gray-200">
+                    <table class="w-full text-sm text-center">
+                        <thead class="text-gray-600 sticky top-0 bg-gray-50 z-10">
+                            <tr>
+                                <th class="pb-2 font-medium">기간(월)</th>
+                                <th class="pb-2 font-medium text-blue-800">계획(월간)</th>
+                                <th class="pb-2 font-medium text-blue-600">계획(누계)</th>
+                                <th class="pb-2 font-medium text-red-800">실적(월간)</th>
+                                <th class="pb-2 font-medium text-red-600">실적(누계)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="dataTableBody" class="space-y-1">
+                            <!-- JS로 행이 동적으로 추가됩니다 -->
+                        </tbody>
+                    </table>
+                </div>
+                
+                <div class="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-100">
+                    <div class="flex justify-between items-center text-sm font-bold text-blue-800">
+                        <span>계획 최종 누계:</span>
+                        <span id="finalTotal">0.00%</span>
+                    </div>
+                    <p id="warningText" class="text-xs text-red-500 mt-1 hidden">※ 계획 누계가 100%를 초과하거나 미달입니다. 수치를 확인해주세요.</p>
+                </div>
+            </div>
+
+            <!-- 우측: 차트 표시 부 -->
+            <div class="w-full md:w-2/3 p-6 flex flex-col bg-white h-full relative">
+                
+                <!-- 현황 요약 대시보드 (신규 추가) -->
+                <div class="grid grid-cols-3 gap-3 md:gap-6 mb-4">
+                    <div class="bg-blue-50 p-3 md:p-5 rounded-xl border border-blue-100 text-center shadow-sm">
+                        <p class="text-xs md:text-sm text-blue-800 font-bold mb-1">현재 계획누계</p>
+                        <p id="sum-planned" class="text-xl md:text-3xl font-black text-blue-600">0.00%</p>
+                    </div>
+                    <div class="bg-red-50 p-3 md:p-5 rounded-xl border border-red-100 text-center shadow-sm">
+                        <p class="text-xs md:text-sm text-red-800 font-bold mb-1">현재 실적누계</p>
+                        <p id="sum-actual" class="text-xl md:text-3xl font-black text-red-600">0.00%</p>
+                    </div>
+                    <div class="bg-gray-50 p-3 md:p-5 rounded-xl border border-gray-200 text-center shadow-sm">
+                        <p class="text-xs md:text-sm text-gray-700 font-bold mb-1">계획대비 달성률</p>
+                        <p id="sum-ratio" class="text-xl md:text-3xl font-black text-gray-800">0.0%</p>
+                    </div>
+                </div>
+
+                <!-- 차트 캔버스 -->
+                <div class="flex-grow relative w-full" style="min-height: 400px;">
+                    <canvas id="sCurveChart" class="w-full h-full"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 초기 26개월 데이터 (계획 및 실적)
+        let data = [
+            { month: '1개월', planned: 1.0, actual: 1.0 },
+            { month: '2개월', planned: 1.5, actual: 1.5 },
+            { month: '3개월', planned: 2.0, actual: 2.2 },
+            { month: '4개월', planned: 2.5, actual: 2.5 },
+            { month: '5개월', planned: 3.0, actual: 3.1 },
+            { month: '6개월', planned: 4.0, actual: 3.8 },
+            { month: '7개월', planned: 5.0, actual: '' },
+            { month: '8개월', planned: 6.0, actual: '' },
+            { month: '9개월', planned: 7.0, actual: '' },
+            { month: '10개월', planned: 7.5, actual: '' },
+            { month: '11개월', planned: 8.0, actual: '' },
+            { month: '12개월', planned: 8.0, actual: '' },
+            { month: '13개월', planned: 7.5, actual: '' },
+            { month: '14개월', planned: 7.0, actual: '' },
+            { month: '15개월', planned: 6.0, actual: '' },
+            { month: '16개월', planned: 5.0, actual: '' },
+            { month: '17개월', planned: 4.0, actual: '' },
+            { month: '18개월', planned: 3.5, actual: '' },
+            { month: '19개월', planned: 3.0, actual: '' },
+            { month: '20개월', planned: 2.5, actual: '' },
+            { month: '21개월', planned: 2.0, actual: '' },
+            { month: '22개월', planned: 1.5, actual: '' },
+            { month: '23개월', planned: 1.0, actual: '' },
+            { month: '24개월', planned: 0.5, actual: '' },
+            { month: '25개월', planned: 0.5, actual: '' },
+            { month: '26개월', planned: 0.5, actual: '' }
+        ];
+
+        let chartInstance = null;
+
+        function init() {
+            renderTable();
+            updateChart();
+        }
+
+        // 테이블 렌더링
+        function renderTable() {
+            const tbody = document.getElementById('dataTableBody');
+            tbody.innerHTML = '';
+            
+            let plannedCum = 0;
+            let actualCum = 0;
+
+            data.forEach((row, index) => {
+                plannedCum += parseFloat(row.planned) || 0;
+                
+                let actualCellHtml = '-';
+                if (row.actual !== '' && row.actual !== null) {
+                    actualCum += parseFloat(row.actual) || 0;
+                    actualCellHtml = `${actualCum.toFixed(2)}%`;
+                }
+                
+                const tr = document.createElement('tr');
+                tr.className = "bg-white border-b border-gray-100 last:border-0 hover:bg-gray-50";
+                
+                tr.innerHTML = `
+                    <td class="p-1">
+                        <input type="text" value="${row.month}" onchange="updateData(${index}, 'month', this.value)" 
+                               class="w-full text-center border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500 text-xs sm:text-sm p-1">
+                    </td>
+                    <td class="p-1">
+                        <input type="number" step="0.01" value="${row.planned}" onchange="updateData(${index}, 'planned', this.value)" 
+                               class="w-full text-center border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500 text-xs sm:text-sm p-1 bg-blue-50">
+                    </td>
+                    <td class="p-1 font-semibold text-xs sm:text-sm ${plannedCum > 100 ? 'text-red-500' : 'text-blue-600'}">
+                        ${plannedCum.toFixed(2)}%
+                    </td>
+                    <td class="p-1">
+                        <input type="number" step="0.01" value="${row.actual}" onchange="updateData(${index}, 'actual', this.value)" placeholder="-"
+                               class="w-full text-center border-gray-300 rounded-md shadow-sm focus:border-red-500 focus:ring-red-500 text-xs sm:text-sm p-1 bg-red-50">
+                    </td>
+                    <td class="p-1 font-semibold text-xs sm:text-sm text-red-600">
+                        ${actualCellHtml}
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            // 최종 누계 업데이트
+            const finalTotal = document.getElementById('finalTotal');
+            const warningText = document.getElementById('warningText');
+            
+            finalTotal.innerText = `${plannedCum.toFixed(2)}%`;
+            if (Math.abs(plannedCum - 100) > 0.1) {
+                warningText.classList.remove('hidden');
+                finalTotal.classList.add('text-red-600');
+            } else {
+                warningText.classList.add('hidden');
+                finalTotal.classList.remove('text-red-600');
+            }
+            
+            // 현황 요약 대시보드 업데이트
+            updateSummaryBox();
+        }
+
+        // 현황 요약 데이터 계산 및 UI 업데이트 함수
+        function updateSummaryBox() {
+            let currentPlanned = 0;
+            let currentActual = 0;
+            let lastActualIndex = -1;
+
+            // 실적 데이터가 입력된 가장 마지막 달 찾기 ('현재' 기준월)
+            for (let i = 0; i < data.length; i++) {
+                if (data[i].actual !== '' && data[i].actual !== null) {
+                    lastActualIndex = i;
+                }
+            }
+
+            // 해당 달까지의 누계 계산
+            if (lastActualIndex >= 0) {
+                for (let i = 0; i <= lastActualIndex; i++) {
+                    currentPlanned += parseFloat(data[i].planned) || 0;
+                    currentActual += parseFloat(data[i].actual) || 0;
+                }
+            }
+
+            let ratio = 0;
+            if (currentPlanned > 0) {
+                ratio = (currentActual / currentPlanned) * 100;
+            }
+
+            // 화면에 텍스트 적용
+            document.getElementById('sum-planned').innerText = currentPlanned.toFixed(2) + '%';
+            document.getElementById('sum-actual').innerText = currentActual.toFixed(2) + '%';
+            
+            const ratioEl = document.getElementById('sum-ratio');
+            
+            if (lastActualIndex === -1) {
+                ratioEl.innerText = '-';
+                ratioEl.className = 'text-xl md:text-3xl font-black text-gray-400';
+            } else {
+                ratioEl.innerText = ratio.toFixed(1) + '%';
+                // 달성률에 따른 직관적 색상 부여
+                if (ratio >= 100) {
+                    ratioEl.className = 'text-xl md:text-3xl font-black text-blue-600'; // 100% 이상 (초과 달성)
+                } else if (ratio >= 95) {
+                    ratioEl.className = 'text-xl md:text-3xl font-black text-green-600'; // 95~100% (정상)
+                } else {
+                    ratioEl.className = 'text-xl md:text-3xl font-black text-red-600'; // 95% 미만 (지연)
+                }
+            }
+        }
+
+        // 데이터 수정 시
+        function updateData(index, field, newValue) {
+            if (field === 'planned' || field === 'actual') {
+                data[index][field] = newValue === '' ? '' : (parseFloat(newValue) || 0);
+            } else {
+                data[index].month = newValue;
+            }
+            renderTable();
+            updateChart();
+        }
+
+        // 행 추가
+        function addRow() {
+            const nextMonthNum = data.length + 1;
+            data.push({ month: `${nextMonthNum}개월`, planned: 0, actual: '' });
+            renderTable();
+            updateChart();
+            
+            // 스크롤 맨 아래로
+            const container = document.querySelector('.overflow-y-auto');
+            container.scrollTop = container.scrollHeight;
+        }
+
+        // 행 삭제
+        function removeRow() {
+            if (data.length > 1) {
+                data.pop();
+                renderTable();
+                updateChart();
+            }
+        }
+
+        // 차트 그리기/업데이트
+        function updateChart() {
+            const ctx = document.getElementById('sCurveChart').getContext('2d');
+            
+            const labels = data.map(d => d.month);
+            const plannedMonthly = data.map(d => parseFloat(d.planned) || 0);
+            
+            let plannedCumData = [];
+            let pSum = 0;
+            for(let val of plannedMonthly) {
+                pSum += val;
+                plannedCumData.push(pSum.toFixed(2));
+            }
+
+            const actualMonthly = [];
+            let actualCumData = [];
+            let aSum = 0;
+
+            for(let i=0; i<data.length; i++) {
+                if (data[i].actual !== '' && data[i].actual !== null) {
+                    let val = parseFloat(data[i].actual) || 0;
+                    actualMonthly.push(val);
+                    aSum += val;
+                    actualCumData.push(aSum.toFixed(2));
+                } else {
+                    actualMonthly.push(null);
+                    actualCumData.push(null);
+                }
+            }
+
+            if (chartInstance) {
+                chartInstance.destroy();
+            }
+
+            chartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            type: 'line',
+                            label: '계획 누계공정률 (%)',
+                            data: plannedCumData,
+                            borderColor: '#2563eb', // Blue-600
+                            backgroundColor: '#2563eb',
+                            borderWidth: 3,
+                            pointBackgroundColor: '#ffffff',
+                            pointBorderColor: '#2563eb',
+                            pointBorderWidth: 2,
+                            pointRadius: 3,
+                            tension: 0.4, 
+                            yAxisID: 'y',
+                            fill: false,
+                            order: 1
+                        },
+                        {
+                            type: 'line',
+                            label: '실적 누계공정률 (%)',
+                            data: actualCumData,
+                            borderColor: '#dc2626', // Red-600
+                            backgroundColor: '#dc2626',
+                            borderWidth: 3,
+                            pointBackgroundColor: '#ffffff',
+                            pointBorderColor: '#dc2626',
+                            pointBorderWidth: 2,
+                            pointRadius: 4,
+                            tension: 0.4,
+                            yAxisID: 'y',
+                            fill: false,
+                            spanGaps: false,
+                            order: 2
+                        },
+                        {
+                            type: 'bar',
+                            label: '계획 월간공정률 (%)',
+                            data: plannedMonthly,
+                            backgroundColor: 'rgba(147, 197, 253, 0.5)', // Blue-300
+                            borderColor: 'rgba(59, 130, 246, 0.7)', // Blue-500
+                            borderWidth: 1,
+                            borderRadius: 2,
+                            yAxisID: 'y',
+                            order: 3
+                        },
+                        {
+                            type: 'bar',
+                            label: '실적 월간공정률 (%)',
+                            data: actualMonthly,
+                            backgroundColor: 'rgba(252, 165, 165, 0.7)', // Red-300
+                            borderColor: 'rgba(220, 38, 38, 0.8)', // Red-600
+                            borderWidth: 1,
+                            borderRadius: 2,
+                            yAxisID: 'y',
+                            order: 4
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
+                        mode: 'index',
+                        intersect: false,
+                    },
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: '공사예정공정표 (S-Curve)',
+                            font: { size: 18, weight: 'bold' },
+                            padding: { top: 10, bottom: 30 }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return context.dataset.label + ': ' + context.parsed.y + '%';
+                                }
+                            }
+                        },
+                        legend: {
+                            position: 'bottom'
+                        }
+                    },
+                    scales: {
+                        x: {
+                            grid: { display: false }
+                        },
+                        y: {
+                            type: 'linear',
+                            display: true,
+                            position: 'left',
+                            title: {
+                                display: true,
+                                text: '공정률 (%)'
+                            },
+                            min: 0,
+                            max: 100, // 누계 기준 100% 픽스
+                            grid: {
+                                color: '#e5e7eb',
+                                borderDash: [5, 5]
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // 초기 실행
+        window.onload = init;
+    </script>
+</body>
+</html>
