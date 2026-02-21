@@ -92,19 +92,21 @@
             /* --- 표(Table) 인쇄 디자인 --- */
             table { 
                 width: 100% !important; 
-                height: 100% !important; /* 표를 컨테이너 높이에 100% 맞춤 -> 줄 수에 상관없이 셀 높이 자동 늘어남 */
+                height: 100% !important; /* 표를 컨테이너 높이에 100% 맞춤 */
                 border-collapse: collapse !important; 
             }
             thead { display: table-header-group !important; } /* 페이지 넘어갈 때 헤더 반복 */
             tr { page-break-inside: avoid !important; }
             
+            /* ★ 표 내부 행 높이를 균등하게 분배 (특정 행만 커지는 현상 방지) ★ */
+            tbody tr { height: 1% !important; }
+
             /* 표 내부 모든 셀의 폰트 크기를 통일 (Tailwind 클래스 무시) */
             th, td { 
                 border: 1px solid #d1d5db !important; /* 진한 선을 연한 회색으로 변경 */
                 padding: 2px 1px !important; /* 여백 축소 */
                 font-size: 10px !important; /* 셀 폰트 강제 고정 */
                 line-height: 1.2 !important;
-                height: auto !important; /* 테이블 높이에 맞춰 tr이 늘어나도록 허용 */
             }
             th { background-color: #f3f4f6 !important; font-weight: bold !important; color: #000 !important; }
             
@@ -336,25 +338,25 @@
                 }
                 
                 const tr = document.createElement('tr');
-                tr.className = "bg-white border-b border-gray-100 hover:bg-gray-50 h-full";
+                tr.className = "bg-white border-b border-gray-100 hover:bg-gray-50"; // h-full 삭제 (버그 원인)
                 
                 tr.innerHTML = `
-                    <td class="p-1 h-full align-middle">
+                    <td class="p-1 align-middle">
                         <input type="text" value="${row.month}" onchange="updateData(${index}, 'month', this.value)" 
                                class="w-full text-center border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500 text-xs sm:text-sm p-1">
                     </td>
-                    <td class="p-1 h-full align-middle">
+                    <td class="p-1 align-middle">
                         <input type="number" step="0.01" value="${row.planned}" onchange="updateData(${index}, 'planned', this.value)" 
                                class="w-full text-center border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500 text-xs sm:text-sm p-1 bg-blue-50">
                     </td>
-                    <td class="p-1 font-semibold text-xs sm:text-sm ${plannedCum > 100 ? 'text-red-500' : 'text-blue-600'} h-full align-middle">
+                    <td class="p-1 font-semibold text-xs sm:text-sm ${plannedCum > 100 ? 'text-red-500' : 'text-blue-600'} align-middle">
                         ${plannedCum.toFixed(2)}%
                     </td>
-                    <td class="p-1 h-full align-middle">
+                    <td class="p-1 align-middle">
                         <input type="number" step="0.01" value="${row.actual}" onchange="updateData(${index}, 'actual', this.value)" placeholder="-"
                                class="w-full text-center border-gray-300 rounded-md shadow-sm focus:border-red-500 focus:ring-red-500 text-xs sm:text-sm p-1 bg-red-50">
                     </td>
-                    <td class="p-1 font-semibold text-xs sm:text-sm text-red-600 h-full align-middle">
+                    <td class="p-1 font-semibold text-xs sm:text-sm text-red-600 align-middle">
                         ${actualCellHtml}
                     </td>
                 `;
