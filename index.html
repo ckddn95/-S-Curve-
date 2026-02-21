@@ -7,32 +7,37 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js/dist/chart.umd.min.js"></script>
     <style>
-        /* 커스텀 스크롤바 */
-        ::-webkit-scrollbar { width: 8px; }
-        ::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 4px; }
-        ::-webkit-scrollbar-thumb { background: #c1c1c1; border-radius: 4px; }
-        ::-webkit-scrollbar-thumb:hover { background: #a8a8a8; }
+        /* 커스텀 스크롤바 (이제 스크롤이 생기지 않으므로 숨김 목적 포함) */
+        ::-webkit-scrollbar { width: 0px; display: none; }
 
-        /* ★ 웹 & 인쇄 공통: 표 전체를 화면 높이에 꽉 차게 균등 분배 (스크롤 차단) ★ */
+        /* ★ 웹 & 인쇄 공통: 표 전체를 화면 높이에 꽉 차게 균등 분배 (스크롤 완전 차단) ★ */
         #table-container {
             overflow: hidden !important; /* 스크롤바 완전히 제거 */
             min-height: 0 !important; /* 내용물이 컨테이너를 강제로 늘리는 현상 방지 (핵심) */
         }
         table {
             table-layout: fixed !important; /* 표 너비와 높이를 비율에 맞춰 강제 분배 */
+            height: 100% !important; /* 테이블 높이를 부모 컨테이너에 100% 맞춤 */
+            margin: 0 !important;
+        }
+        thead th {
+            height: auto !important;
+            padding: 4px 2px !important;
+            font-size: clamp(10px, 1.2vh, 13px) !important;
+            font-weight: 600 !important;
         }
         #dataTableBody tr { 
-            height: 1% !important; /* 전체 높이를 행 개수만큼 똑같이 N등분 */
+            height: 1% !important; /* 전체 남은 높이를 행 개수만큼 똑같이 N등분 */
         }
         #dataTableBody td { 
             height: 1% !important; 
             padding: 0 !important; /* 셀 여백을 없애서 내용이 꽉 차게 함 */
-            font-size: clamp(9px, 1.8vh, 14px) !important; /* 화면 높이에 맞춰 폰트 크기 자동 조절 */
+            font-size: clamp(9px, 1.5vh, 14px) !important; /* 화면 높이에 맞춰 폰트 크기 자동 조절 */
             line-height: 1.1 !important; /* 텍스트 상하 여백 최소화 */
         }
         #dataTableBody input {
             width: 100%;
-            height: 100%;
+            height: 100% !important;
             min-height: 0 !important; /* 입력칸의 고정 최소 높이 완전히 제거 (핵심) */
             padding: 0 !important;
             margin: 0 !important;
@@ -64,6 +69,7 @@
                 margin: 0 !important; 
                 padding: 0 !important;
                 width: 100% !important;
+                height: auto !important; /* 화면 모드의 100vh 무력화 */
             }
             
             button, .print-hidden, #toastMessage { display: none !important; }
@@ -74,6 +80,7 @@
                 margin: 0 !important; 
                 box-shadow: none !important; 
                 border-radius: 0 !important; 
+                height: auto !important; /* 화면 모드의 100% 무력화 */
             }
             
             .bg-blue-600 {
@@ -104,8 +111,6 @@
             }
 
             table { 
-                width: 100% !important; 
-                height: 100% !important; 
                 border-collapse: collapse !important; 
             }
             thead { display: table-header-group !important; }
@@ -115,7 +120,7 @@
                 border: 1px solid #d1d5db !important; 
                 font-size: 10px !important; 
             }
-            th { background-color: #f3f4f6 !important; font-weight: bold !important; color: #000 !important; padding: 2px 1px !important;}
+            th { background-color: #f3f4f6 !important; color: #000 !important; }
             
             input { font-size: 10px !important; color: black !important; }
 
@@ -155,42 +160,43 @@
         }
     </style>
 </head>
-<body class="bg-gray-50 min-h-screen p-4 md:p-8 font-sans text-gray-800">
+<!-- h-screen 적용 및 여백을 최적화하여 1페이지 안에 모두 담기도록 함 -->
+<body class="bg-gray-50 h-screen p-2 md:p-4 font-sans text-gray-800 flex flex-col">
 
-    <div class="max-w-7xl mx-auto bg-white rounded-xl shadow-lg overflow-hidden flex flex-col h-full">
+    <div class="max-w-7xl w-full mx-auto bg-white rounded-xl shadow-lg overflow-hidden flex flex-col flex-grow min-h-0">
         <!-- 상단 제목 -->
-        <div class="bg-blue-600 text-white px-6 py-4">
-            <h1 class="text-2xl font-bold">📈 전체 공정표</h1>
-            <p class="text-blue-100 text-sm mt-1 print-hidden">월별 공정률을 입력하면 누계 공정률 S-Curve가 자동으로 생성됩니다.</p>
+        <div class="bg-blue-600 text-white px-4 py-3 shrink-0">
+            <h1 class="text-xl md:text-2xl font-bold">📈 전체 공정표</h1>
+            <p class="text-blue-100 text-xs md:text-sm mt-1 print-hidden">월별 공정률을 입력하면 누계 공정률 S-Curve가 자동으로 생성됩니다.</p>
         </div>
 
-        <!-- 메인 래퍼: 높이를 화면에 맞게 고정하여 스크롤 차단 -->
-        <div id="main-wrapper" class="flex flex-col md:flex-row h-[calc(100vh-150px)] min-h-[600px] flex-grow">
+        <!-- 메인 래퍼: 높이를 화면에 맞게 고정하여 내부 요소만 수축하도록 설정 -->
+        <div id="main-wrapper" class="flex flex-col md:flex-row flex-grow min-h-0 p-3 gap-4">
             
             <!-- 좌측: 데이터 입력 부 -->
-            <div id="left-panel" class="w-full md:w-1/3 border-r border-gray-200 p-4 flex flex-col h-full">
-                <div class="flex flex-col mb-4 gap-2 print-hidden">
+            <div id="left-panel" class="w-full md:w-1/3 border-r border-gray-200 pr-2 flex flex-col h-full min-h-0">
+                <div class="flex flex-col mb-3 gap-2 print-hidden shrink-0">
                     <div class="flex justify-between items-center">
-                        <h2 class="text-lg font-semibold">데이터 입력</h2>
+                        <h2 class="text-md md:text-lg font-semibold">데이터 입력</h2>
                         <div class="space-x-1 flex flex-wrap justify-end gap-y-1">
-                            <button onclick="window.print()" class="px-3 py-1 bg-gray-50 text-gray-700 rounded-md text-sm font-medium hover:bg-gray-200 transition border border-gray-300">🖨️ 인쇄</button>
-                            <button onclick="saveData()" class="px-3 py-1 bg-green-50 text-green-700 rounded-md text-sm font-medium hover:bg-green-100 transition border border-green-200">💾 저장</button>
-                            <button onclick="addRow()" class="px-2 py-1 bg-blue-50 text-blue-600 rounded-md text-sm font-medium hover:bg-blue-100 transition" title="1개월 추가">+1행</button>
-                            <button onclick="removeRow()" class="px-2 py-1 bg-red-50 text-red-600 rounded-md text-sm font-medium hover:bg-red-100 transition" title="1개월 삭제">-1행</button>
+                            <button onclick="window.print()" class="px-2 py-1 bg-gray-50 text-gray-700 rounded-md text-xs font-medium hover:bg-gray-200 transition border border-gray-300">🖨️ 인쇄</button>
+                            <button onclick="saveData()" class="px-2 py-1 bg-green-50 text-green-700 rounded-md text-xs font-medium hover:bg-green-100 transition border border-green-200">💾 저장</button>
+                            <button onclick="addRow()" class="px-2 py-1 bg-blue-50 text-blue-600 rounded-md text-xs font-medium hover:bg-blue-100 transition" title="1개월 추가">+1행</button>
+                            <button onclick="removeRow()" class="px-2 py-1 bg-red-50 text-red-600 rounded-md text-xs font-medium hover:bg-red-100 transition" title="1개월 삭제">-1행</button>
                         </div>
                     </div>
                 </div>
 
-                <!-- 표 컨테이너: overflow-hidden으로 스크롤 제거 -->
-                <div id="table-container" class="flex-grow bg-white rounded-lg border border-gray-200 flex flex-col">
-                    <table class="w-full h-full text-sm text-center">
+                <!-- 표 컨테이너: flex-grow와 min-h-0을 결합하여 절대 화면을 벗어나지 않게 함 -->
+                <div id="table-container" class="flex-grow bg-white rounded-lg border border-gray-200 flex flex-col min-h-0">
+                    <table class="w-full text-center">
                         <thead class="text-gray-600 bg-gray-50">
                             <tr>
-                                <th class="pb-2 pt-2 font-medium border-b border-gray-200">기간(월)</th>
-                                <th class="pb-2 pt-2 font-medium text-blue-800 border-b border-gray-200">계획 월간(%)</th>
-                                <th class="pb-2 pt-2 font-medium text-blue-600 border-b border-gray-200">계획 누계(%)</th>
-                                <th class="pb-2 pt-2 font-medium text-red-800 border-b border-gray-200">실적 월간(%)</th>
-                                <th class="pb-2 pt-2 font-medium text-red-600 border-b border-gray-200">실적 누계(%)</th>
+                                <th class="border-b border-gray-200">기간(월)</th>
+                                <th class="text-blue-800 border-b border-gray-200">계획 월간(%)</th>
+                                <th class="text-blue-600 border-b border-gray-200">계획 누계(%)</th>
+                                <th class="text-red-800 border-b border-gray-200">실적 월간(%)</th>
+                                <th class="text-red-600 border-b border-gray-200">실적 누계(%)</th>
                             </tr>
                         </thead>
                         <tbody id="dataTableBody">
@@ -200,36 +206,36 @@
                 </div>
                 
                 <!-- 하단 계획 누계 영역 -->
-                <div class="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-100">
-                    <div class="flex justify-between items-center text-sm font-bold text-blue-800">
+                <div class="mt-3 p-2 bg-blue-50 rounded-lg border border-blue-100 shrink-0">
+                    <div class="flex justify-between items-center text-xs md:text-sm font-bold text-blue-800">
                         <span>계획 최종 누계 (%):</span>
                         <span id="finalTotal">0.00</span>
                     </div>
-                    <p id="warningText" class="text-xs text-red-500 mt-1 hidden print-hidden">※ 계획 누계가 100을 초과하거나 미달입니다. 수치를 확인해주세요.</p>
+                    <p id="warningText" class="text-[10px] text-red-500 mt-1 hidden print-hidden">※ 계획 누계가 100을 초과하거나 미달입니다.</p>
                 </div>
             </div>
 
             <!-- 우측: 차트 표시 부 -->
-            <div id="right-panel" class="w-full md:w-2/3 p-6 flex flex-col bg-white h-full relative">
+            <div id="right-panel" class="w-full md:w-2/3 pl-2 flex flex-col h-full min-h-0 relative">
                 
                 <!-- 현황 요약 대시보드 -->
-                <div class="grid grid-cols-3 gap-3 md:gap-6 mb-4">
-                    <div class="bg-blue-50 p-3 md:p-5 rounded-xl border border-blue-100 text-center shadow-sm">
-                        <p class="text-xs md:text-sm text-blue-800 font-bold mb-1">현재 계획누계 (%)</p>
-                        <p id="sum-planned" class="text-xl md:text-3xl font-black text-blue-600">0.00</p>
+                <div class="grid grid-cols-3 gap-2 md:gap-4 mb-3 shrink-0">
+                    <div class="bg-blue-50 p-2 md:p-4 rounded-xl border border-blue-100 text-center shadow-sm">
+                        <p class="text-[10px] md:text-xs text-blue-800 font-bold mb-1">현재 계획누계 (%)</p>
+                        <p id="sum-planned" class="text-lg md:text-2xl font-black text-blue-600">0.00</p>
                     </div>
-                    <div class="bg-red-50 p-3 md:p-5 rounded-xl border border-red-100 text-center shadow-sm">
-                        <p class="text-xs md:text-sm text-red-800 font-bold mb-1">현재 실적누계 (%)</p>
-                        <p id="sum-actual" class="text-xl md:text-3xl font-black text-red-600">0.00</p>
+                    <div class="bg-red-50 p-2 md:p-4 rounded-xl border border-red-100 text-center shadow-sm">
+                        <p class="text-[10px] md:text-xs text-red-800 font-bold mb-1">현재 실적누계 (%)</p>
+                        <p id="sum-actual" class="text-lg md:text-2xl font-black text-red-600">0.00</p>
                     </div>
-                    <div class="bg-gray-50 p-3 md:p-5 rounded-xl border border-gray-200 text-center shadow-sm">
-                        <p class="text-xs md:text-sm text-gray-700 font-bold mb-1">계획대비 달성률 (%)</p>
-                        <p id="sum-ratio" class="text-xl md:text-3xl font-black text-gray-800">0.0</p>
+                    <div class="bg-gray-50 p-2 md:p-4 rounded-xl border border-gray-200 text-center shadow-sm">
+                        <p class="text-[10px] md:text-xs text-gray-700 font-bold mb-1">계획대비 달성률 (%)</p>
+                        <p id="sum-ratio" class="text-lg md:text-2xl font-black text-gray-800">0.0</p>
                     </div>
                 </div>
 
                 <!-- 차트 캔버스 -->
-                <div class="flex-grow relative w-full" style="min-height: 400px;">
+                <div class="flex-grow relative w-full min-h-0">
                     <canvas id="sCurveChart" class="w-full h-full"></canvas>
                 </div>
             </div>
@@ -242,7 +248,7 @@
     </div>
 
     <script>
-        // 초기 26개월 데이터 ('개월' 글자 제거)
+        // 초기 26개월 데이터
         const defaultData = [
             { month: '1', planned: 1.0, actual: 1.0 },
             { month: '2', planned: 1.5, actual: 1.5 },
@@ -331,7 +337,6 @@
                 const tr = document.createElement('tr');
                 tr.className = "border-b border-gray-200 hover:bg-gray-50"; 
                 
-                // Tailwind 폰트 사이즈 클래스(text-xs, text-sm)를 제거하여 clamp() 스타일이 덮어쓰이지 않도록 수정
                 tr.innerHTML = `
                     <td class="align-middle">
                         <input type="text" value="${row.month}" onchange="updateData(${index}, 'month', this.value)" 
@@ -400,15 +405,15 @@
             
             if (lastActualIndex === -1) {
                 ratioEl.innerText = '-';
-                ratioEl.className = 'text-xl md:text-3xl font-black text-gray-400';
+                ratioEl.className = 'text-lg md:text-2xl font-black text-gray-400';
             } else {
                 ratioEl.innerText = ratio.toFixed(1);
                 if (ratio >= 100) {
-                    ratioEl.className = 'text-xl md:text-3xl font-black text-blue-600';
+                    ratioEl.className = 'text-lg md:text-2xl font-black text-blue-600';
                 } else if (ratio >= 95) {
-                    ratioEl.className = 'text-xl md:text-3xl font-black text-green-600';
+                    ratioEl.className = 'text-lg md:text-2xl font-black text-green-600';
                 } else {
-                    ratioEl.className = 'text-xl md:text-3xl font-black text-red-600';
+                    ratioEl.className = 'text-lg md:text-2xl font-black text-red-600';
                 }
             }
         }
