@@ -14,15 +14,35 @@
         ::-webkit-scrollbar-thumb { background: #c1c1c1; border-radius: 4px; }
         ::-webkit-scrollbar-thumb:hover { background: #a8a8a8; }
 
-        /* 인쇄용 최적화 스타일 (Tailwind 충돌 방지를 위해 ID 선택자로 강제 적용) */
+        /* 인쇄용 최적화 스타일 (Tailwind 충돌 방지를 위해 ID/!important 강제 적용) */
         @media print {
             @page { size: A4 landscape; margin: 10mm; }
-            body, html { width: 100% !important; height: auto !important; padding: 0 !important; margin: 0 !important; background-color: white !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            body, html { 
+                width: 100% !important; 
+                height: auto !important; 
+                padding: 0 !important; 
+                margin: 0 !important; 
+                background-color: white !important; 
+                color: black !important; /* 텍스트 보장 */
+                -webkit-print-color-adjust: exact; 
+                print-color-adjust: exact; 
+            }
             
-            /* 숨길 요소들 */
+            /* 불필요 요소 숨김 및 레이아웃 잘림 방지 */
             .print-hidden { display: none !important; }
             .shadow-lg { box-shadow: none !important; border: none !important; margin: 0 !important; }
             .max-w-7xl { max-width: 100% !important; }
+            .overflow-hidden, .overflow-y-auto { overflow: visible !important; height: auto !important; max-height: none !important; }
+            
+            /* 상단 제목 영역 보장 (배경색 미인쇄 환경 대비) */
+            .bg-blue-600 { 
+                background-color: transparent !important; 
+                color: black !important; 
+                padding: 0 0 10px 0 !important; 
+                border-bottom: 2px solid #000 !important; 
+                margin-bottom: 10px !important;
+            }
+            .text-white { color: black !important; }
             
             /* 핵심: 좌우 나란히 배치 강제 (가로 모드) */
             #main-wrapper {
@@ -36,45 +56,56 @@
                 gap: 5mm !important;
             }
             
-            /* 좌측 표 영역 강제 축소 및 고정 */
+            /* 좌측 표 영역 강제 축소 및 흐름 배치 */
             #left-panel {
-                display: block !important;
-                width: 33% !important;
-                flex: 0 0 33% !important;
-                max-width: 33% !important;
+                width: 35% !important;
+                flex: 0 0 35% !important;
+                max-width: 35% !important;
                 border: none !important;
                 padding: 0 !important;
+                display: block !important; /* flex 해제하여 하단 누계 잘림 방지 */
             }
             
             /* 우측 차트 영역 강제 고정 */
             #right-panel {
+                width: 65% !important;
+                flex: 0 0 65% !important;
+                max-width: 65% !important;
+                padding: 0 !important;
                 display: block !important;
-                width: 67% !important;
-                flex: 0 0 67% !important;
-                max-width: 67% !important;
-                padding: 0 0 0 5mm !important;
             }
             
-            /* 스크롤바 영역 해제하여 내용 모두 보이게 */
-            .overflow-y-auto { overflow: visible !important; height: auto !important; max-height: none !important; }
-            
-            /* 폰트 및 여백 최적화 (1페이지 안에 들어오도록) */
+            /* 폰트 및 여백 최적화 (1페이지 안에 쏙 들어오도록 압축) */
             table { font-size: 10px !important; line-height: 1.1 !important; width: 100% !important; }
-            th, td { padding: 3px 1px !important; }
-            input { font-size: 10px !important; padding: 0px !important; border: none !important; background: transparent !important; text-align: center; width: 100%; color: black !important; }
+            th { border-bottom: 1px solid #000 !important; padding: 2px 1px !important; }
+            td { border-bottom: 1px solid #eee !important; padding: 1px !important; }
+            input { font-size: 10px !important; padding: 0 !important; height: 12px !important; border: none !important; background: transparent !important; text-align: center; width: 100%; color: black !important; }
+            
+            /* 하단 계획 누계 패널 확실히 보이게 처리 */
+            .bg-blue-50 { 
+                background-color: transparent !important; 
+                border: 1px solid black !important; 
+                margin-top: 8px !important; 
+                padding: 6px !important; 
+                color: black !important;
+            }
+            .text-blue-800 { color: black !important; }
+            #finalTotal { color: black !important; font-size: 13px !important; }
             
             /* 차트 및 대시보드 크기 최적화 */
             .grid-cols-3 { gap: 8px !important; margin-bottom: 10px !important; }
-            .grid-cols-3 > div { padding: 8px !important; border-width: 1px !important; }
-            .text-xl, .md\:text-3xl { font-size: 1.2rem !important; line-height: 1.2 !important; }
+            .grid-cols-3 > div { padding: 8px !important; border: 1px solid black !important; background-color: transparent !important; }
+            .grid-cols-3 p { color: black !important; }
+            .text-xl, .md\:text-3xl { font-size: 1.2rem !important; line-height: 1.2 !important; color: black !important; }
             
-            canvas { max-height: 500px !important; width: 100% !important; }
+            canvas { max-height: 480px !important; width: 100% !important; }
         }
     </style>
 </head>
 <body class="bg-gray-50 min-h-screen p-4 md:p-8 font-sans text-gray-800">
 
     <div class="max-w-7xl mx-auto bg-white rounded-xl shadow-lg overflow-hidden">
+        <!-- 상단 제목 -->
         <div class="bg-blue-600 text-white px-6 py-4">
             <h1 class="text-2xl font-bold">📈 공사예정공정표 S-Curve 생성기</h1>
             <p class="text-blue-100 text-sm mt-1 print-hidden">월별 공정률을 입력하면 누계 공정률 S-Curve가 자동으로 생성됩니다.</p>
@@ -111,11 +142,11 @@
                         <!-- 인쇄 전용 헤더 (화면에서는 숨기고 인쇄할 때만 보이게) -->
                         <thead class="hidden text-gray-600 bg-gray-50" style="display: none;" id="print-header">
                             <tr>
-                                <th class="pb-2 font-medium border-b border-gray-300">기간(월)</th>
-                                <th class="pb-2 font-medium text-blue-800 border-b border-gray-300">계획(월)</th>
-                                <th class="pb-2 font-medium text-blue-600 border-b border-gray-300">계획(누계)</th>
-                                <th class="pb-2 font-medium text-red-800 border-b border-gray-300">실적(월)</th>
-                                <th class="pb-2 font-medium text-red-600 border-b border-gray-300">실적(누계)</th>
+                                <th class="pb-2 font-medium">기간(월)</th>
+                                <th class="pb-2 font-medium">계획(월)</th>
+                                <th class="pb-2 font-medium">계획(누계)</th>
+                                <th class="pb-2 font-medium">실적(월)</th>
+                                <th class="pb-2 font-medium">실적(누계)</th>
                             </tr>
                         </thead>
                         <style>
@@ -130,6 +161,7 @@
                     </table>
                 </div>
                 
+                <!-- 하단 계획 누계 영역 -->
                 <div class="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-100">
                     <div class="flex justify-between items-center text-sm font-bold text-blue-800">
                         <span>계획 최종 누계:</span>
