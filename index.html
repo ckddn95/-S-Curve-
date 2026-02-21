@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>예정공정률 S-Curve 생성기</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Chart.js 최신 UMD 버전을 명시하여 전역 변수 로드 문제 해결 -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js/dist/chart.umd.min.js"></script>
     <style>
         /* 커스텀 스크롤바 */
@@ -14,91 +13,125 @@
         ::-webkit-scrollbar-thumb { background: #c1c1c1; border-radius: 4px; }
         ::-webkit-scrollbar-thumb:hover { background: #a8a8a8; }
 
-        /* 인쇄용 최적화 스타일 (Tailwind 충돌 방지를 위해 ID/!important 강제 적용) */
+        /* 완벽한 인쇄용 최적화 스타일 (Grid 기반 강제 고정) */
         @media print {
             @page { size: A4 landscape; margin: 10mm; }
+            
+            /* 기본 초기화 */
             body, html { 
-                width: 100% !important; 
-                height: auto !important; 
-                padding: 0 !important; 
-                margin: 0 !important; 
-                background-color: white !important; 
-                color: black !important; /* 텍스트 보장 */
+                background: white !important; 
+                color: black !important; 
                 -webkit-print-color-adjust: exact; 
                 print-color-adjust: exact; 
-            }
-            
-            /* 불필요 요소 숨김 및 레이아웃 잘림 방지 */
-            .print-hidden { display: none !important; }
-            .shadow-lg { box-shadow: none !important; border: none !important; margin: 0 !important; }
-            .max-w-7xl { max-width: 100% !important; }
-            .overflow-hidden, .overflow-y-auto { overflow: visible !important; height: auto !important; max-height: none !important; }
-            
-            /* 상단 제목 영역 보장 (배경색 미인쇄 환경 대비) */
-            .bg-blue-600 { 
-                background-color: transparent !important; 
-                color: black !important; 
-                padding: 0 0 10px 0 !important; 
-                border-bottom: 2px solid #000 !important; 
-                margin-bottom: 10px !important;
-            }
-            .text-white { color: black !important; }
-            
-            /* 핵심: 좌우 나란히 배치 강제 (가로 모드) */
-            #main-wrapper {
-                display: flex !important;
-                flex-direction: row !important;
-                flex-wrap: nowrap !important;
-                align-items: flex-start !important;
+                margin: 0 !important; 
+                padding: 0 !important;
                 width: 100% !important;
+            }
+            
+            /* 숨길 요소들 완벽 차단 */
+            button, .print-hidden, #toastMessage { display: none !important; }
+            
+            /* 메인 컨테이너 그림자/여백/크기 초기화 */
+            .max-w-7xl { 
+                max-width: none !important; 
+                width: 100% !important; 
+                margin: 0 !important; 
+                box-shadow: none !important; 
+                border-radius: 0 !important; 
+            }
+            
+            /* 상단 타이틀 영역 살리기 */
+            .bg-blue-600 {
+                background: white !important;
+                color: black !important;
+                border-bottom: 2px solid #000 !important;
+                padding: 0 0 10px 0 !important;
+                margin-bottom: 15px !important;
+            }
+            .bg-blue-600 h1 { color: black !important; font-size: 20px !important; }
+
+            /* ★ 핵심: Grid를 사용한 완벽한 1단 가로 배치 (표 32% : 차트 66%) ★ */
+            #main-wrapper {
+                display: grid !important;
+                grid-template-columns: 32% 66% !important;
+                gap: 2% !important;
                 height: auto !important;
                 min-height: 0 !important;
-                gap: 5mm !important;
+                overflow: visible !important;
             }
             
-            /* 좌측 표 영역 강제 축소 및 흐름 배치 */
-            #left-panel {
-                width: 35% !important;
-                flex: 0 0 35% !important;
-                max-width: 35% !important;
+            /* 패널 높이 및 스크롤 제한 해제 */
+            #left-panel, #right-panel, .overflow-y-auto {
+                height: auto !important;
+                max-height: none !important;
+                overflow: visible !important;
                 border: none !important;
-                padding: 0 !important;
-                display: block !important; /* flex 해제하여 하단 누계 잘림 방지 */
-            }
-            
-            /* 우측 차트 영역 강제 고정 */
-            #right-panel {
-                width: 65% !important;
-                flex: 0 0 65% !important;
-                max-width: 65% !important;
                 padding: 0 !important;
                 display: block !important;
             }
-            
-            /* 폰트 및 여백 최적화 (1페이지 안에 쏙 들어오도록 압축) */
-            table { font-size: 10px !important; line-height: 1.1 !important; width: 100% !important; }
-            th { border-bottom: 1px solid #000 !important; padding: 2px 1px !important; }
-            td { border-bottom: 1px solid #eee !important; padding: 1px !important; }
-            input { font-size: 10px !important; padding: 0 !important; height: 12px !important; border: none !important; background: transparent !important; text-align: center; width: 100%; color: black !important; }
-            
-            /* 하단 계획 누계 패널 확실히 보이게 처리 */
-            .bg-blue-50 { 
-                background-color: transparent !important; 
-                border: 1px solid black !important; 
-                margin-top: 8px !important; 
-                padding: 6px !important; 
-                color: black !important;
+
+            /* --- 표(Table) 인쇄 디자인 --- */
+            table { 
+                width: 100% !important; 
+                border-collapse: collapse !important; 
+                font-size: 11px !important; 
             }
-            .text-blue-800 { color: black !important; }
-            #finalTotal { color: black !important; font-size: 13px !important; }
+            thead { display: table-header-group !important; } /* 페이지 넘어갈 때 헤더 반복 */
+            tr { page-break-inside: avoid !important; }
+            th, td { 
+                border: 1px solid #9ca3af !important; 
+                padding: 4px 2px !important; 
+            }
+            th { background-color: #f3f4f6 !important; font-weight: bold !important; color: #000 !important; }
             
-            /* 차트 및 대시보드 크기 최적화 */
-            .grid-cols-3 { gap: 8px !important; margin-bottom: 10px !important; }
-            .grid-cols-3 > div { padding: 8px !important; border: 1px solid black !important; background-color: transparent !important; }
+            /* Input 태그를 일반 텍스트처럼 보이도록 변환 */
+            input { 
+                border: none !important; 
+                background: transparent !important; 
+                text-align: center !important; 
+                font-size: 11px !important; 
+                width: 100% !important; 
+                padding: 0 !important; 
+                margin: 0 !important; 
+                color: black !important; 
+                box-shadow: none !important;
+            }
+
+            /* 하단 계획 누계 텍스트 박스 */
+            .bg-blue-50.rounded-lg.border {
+                border: 1px solid #9ca3af !important;
+                background: transparent !important;
+                margin-top: 10px !important;
+                padding: 8px !important;
+            }
+            .bg-blue-50 span { color: black !important; font-size: 12px !important; }
+
+            /* --- 우측 대시보드 및 차트 --- */
+            .grid-cols-3 {
+                display: grid !important;
+                grid-template-columns: repeat(3, 1fr) !important;
+                gap: 10px !important;
+                margin-bottom: 20px !important;
+            }
+            .grid-cols-3 > div {
+                border: 1px solid #9ca3af !important;
+                background: transparent !important;
+                padding: 10px !important;
+                border-radius: 0 !important;
+            }
             .grid-cols-3 p { color: black !important; }
-            .text-xl, .md\:text-3xl { font-size: 1.2rem !important; line-height: 1.2 !important; color: black !important; }
             
-            canvas { max-height: 480px !important; width: 100% !important; }
+            /* 차트 컨테이너 높이 픽스 (무한 늘어남 방지) */
+            .flex-grow.relative.w-full {
+                height: 500px !important;
+                max-height: 500px !important;
+                display: block !important;
+            }
+            canvas {
+                width: 100% !important;
+                height: 100% !important;
+                max-height: 500px !important;
+            }
         }
     </style>
 </head>
@@ -111,10 +144,10 @@
             <p class="text-blue-100 text-sm mt-1 print-hidden">월별 공정률을 입력하면 누계 공정률 S-Curve가 자동으로 생성됩니다.</p>
         </div>
 
-        <!-- 인쇄 시 ID 선택자로 강제 가로 배치 (#main-wrapper) -->
+        <!-- 메인 래퍼 -->
         <div id="main-wrapper" class="flex flex-col md:flex-row h-[calc(100vh-150px)] min-h-[600px]">
             
-            <!-- 좌측: 데이터 입력 부 (#left-panel) -->
+            <!-- 좌측: 데이터 입력 부 -->
             <div id="left-panel" class="w-full md:w-1/3 border-r border-gray-200 p-4 flex flex-col h-full">
                 <div class="flex flex-col mb-4 gap-2 print-hidden">
                     <div class="flex justify-between items-center">
@@ -130,31 +163,15 @@
 
                 <div class="overflow-y-auto flex-grow bg-gray-50 rounded-lg p-2 border border-gray-200">
                     <table class="w-full text-sm text-center">
-                        <thead class="text-gray-600 sticky top-0 bg-gray-50 z-10 print-hidden">
+                        <thead class="text-gray-600 sticky top-0 bg-gray-50 z-10">
                             <tr>
-                                <th class="pb-2 font-medium">기간(월)</th>
-                                <th class="pb-2 font-medium text-blue-800">계획(월간)</th>
-                                <th class="pb-2 font-medium text-blue-600">계획(누계)</th>
-                                <th class="pb-2 font-medium text-red-800">실적(월간)</th>
-                                <th class="pb-2 font-medium text-red-600">실적(누계)</th>
+                                <th class="pb-2 pt-2 font-medium border-b border-gray-200">기간(월)</th>
+                                <th class="pb-2 pt-2 font-medium text-blue-800 border-b border-gray-200">계획(월)</th>
+                                <th class="pb-2 pt-2 font-medium text-blue-600 border-b border-gray-200">계획(누계)</th>
+                                <th class="pb-2 pt-2 font-medium text-red-800 border-b border-gray-200">실적(월)</th>
+                                <th class="pb-2 pt-2 font-medium text-red-600 border-b border-gray-200">실적(누계)</th>
                             </tr>
                         </thead>
-                        <!-- 인쇄 전용 헤더 (화면에서는 숨기고 인쇄할 때만 보이게) -->
-                        <thead class="hidden text-gray-600 bg-gray-50" style="display: none;" id="print-header">
-                            <tr>
-                                <th class="pb-2 font-medium">기간(월)</th>
-                                <th class="pb-2 font-medium">계획(월)</th>
-                                <th class="pb-2 font-medium">계획(누계)</th>
-                                <th class="pb-2 font-medium">실적(월)</th>
-                                <th class="pb-2 font-medium">실적(누계)</th>
-                            </tr>
-                        </thead>
-                        <style>
-                            @media print {
-                                #print-header { display: table-header-group !important; }
-                                .print-hidden { display: none !important; }
-                            }
-                        </style>
                         <tbody id="dataTableBody" class="space-y-1">
                             <!-- JS로 행이 동적으로 추가됩니다 -->
                         </tbody>
@@ -171,7 +188,7 @@
                 </div>
             </div>
 
-            <!-- 우측: 차트 표시 부 (#right-panel) -->
+            <!-- 우측: 차트 표시 부 -->
             <div id="right-panel" class="w-full md:w-2/3 p-6 flex flex-col bg-white h-full relative">
                 
                 <!-- 현황 요약 대시보드 -->
@@ -235,23 +252,20 @@
         ];
 
         let data = JSON.parse(JSON.stringify(defaultData));
-
         let chartInstance = null;
 
         function init() {
-            // Chart.js 로드가 지연되는 환경을 위한 방어 코드
             if (typeof Chart === 'undefined') {
-                console.warn('Chart.js가 아직 로드되지 않았습니다. 잠시 후 다시 시도합니다...');
+                console.warn('Chart.js 로드 대기중...');
                 setTimeout(init, 100);
                 return;
             }
 
-            // 저장된 데이터가 있는지 확인하고 불러오기
             const savedData = localStorage.getItem('sCurveData_v1');
             if (savedData) {
                 try {
                     data = JSON.parse(savedData);
-                    setTimeout(() => showToast('이전에 저장된 데이터를 불러왔습니다.'), 500);
+                    setTimeout(() => showToast('저장된 데이터를 불러왔습니다.'), 500);
                 } catch (e) {
                     console.error("데이터 불러오기 실패", e);
                 }
@@ -261,27 +275,22 @@
             updateChart();
         }
 
-        // 토스트 메시지 표시
         function showToast(message) {
             const toast = document.getElementById('toastMessage');
             toast.innerText = message;
             toast.classList.remove('opacity-0');
             toast.classList.add('opacity-100');
-            
-            // 3초 후 숨김
             setTimeout(() => {
                 toast.classList.remove('opacity-100');
                 toast.classList.add('opacity-0');
             }, 3000);
         }
 
-        // 데이터 저장 기능 (로컬 스토리지)
         function saveData() {
             localStorage.setItem('sCurveData_v1', JSON.stringify(data));
-            showToast('데이터가 브라우저에 안전하게 저장되었습니다!');
+            showToast('데이터가 브라우저에 저장되었습니다!');
         }
 
-        // 테이블 렌더링
         function renderTable() {
             const tbody = document.getElementById('dataTableBody');
             tbody.innerHTML = '';
@@ -299,7 +308,7 @@
                 }
                 
                 const tr = document.createElement('tr');
-                tr.className = "bg-white border-b border-gray-100 last:border-0 hover:bg-gray-50";
+                tr.className = "bg-white border-b border-gray-100 hover:bg-gray-50";
                 
                 tr.innerHTML = `
                     <td class="p-1">
@@ -324,7 +333,6 @@
                 tbody.appendChild(tr);
             });
 
-            // 최종 누계 업데이트
             const finalTotal = document.getElementById('finalTotal');
             const warningText = document.getElementById('warningText');
             
@@ -337,24 +345,20 @@
                 finalTotal.classList.remove('text-red-600');
             }
             
-            // 현황 요약 대시보드 업데이트
             updateSummaryBox();
         }
 
-        // 현황 요약 데이터 계산 및 UI 업데이트 함수
         function updateSummaryBox() {
             let currentPlanned = 0;
             let currentActual = 0;
             let lastActualIndex = -1;
 
-            // 실적 데이터가 입력된 가장 마지막 달 찾기 ('현재' 기준월)
             for (let i = 0; i < data.length; i++) {
                 if (data[i].actual !== '' && data[i].actual !== null) {
                     lastActualIndex = i;
                 }
             }
 
-            // 해당 달까지의 누계 계산
             if (lastActualIndex >= 0) {
                 for (let i = 0; i <= lastActualIndex; i++) {
                     currentPlanned += parseFloat(data[i].planned) || 0;
@@ -367,7 +371,6 @@
                 ratio = (currentActual / currentPlanned) * 100;
             }
 
-            // 화면에 텍스트 적용
             document.getElementById('sum-planned').innerText = currentPlanned.toFixed(2) + '%';
             document.getElementById('sum-actual').innerText = currentActual.toFixed(2) + '%';
             
@@ -378,18 +381,16 @@
                 ratioEl.className = 'text-xl md:text-3xl font-black text-gray-400';
             } else {
                 ratioEl.innerText = ratio.toFixed(1) + '%';
-                // 달성률에 따른 직관적 색상 부여
                 if (ratio >= 100) {
-                    ratioEl.className = 'text-xl md:text-3xl font-black text-blue-600'; // 100% 이상 (초과 달성)
+                    ratioEl.className = 'text-xl md:text-3xl font-black text-blue-600';
                 } else if (ratio >= 95) {
-                    ratioEl.className = 'text-xl md:text-3xl font-black text-green-600'; // 95~100% (정상)
+                    ratioEl.className = 'text-xl md:text-3xl font-black text-green-600';
                 } else {
-                    ratioEl.className = 'text-xl md:text-3xl font-black text-red-600'; // 95% 미만 (지연)
+                    ratioEl.className = 'text-xl md:text-3xl font-black text-red-600';
                 }
             }
         }
 
-        // 데이터 수정 시
         function updateData(index, field, newValue) {
             if (field === 'planned' || field === 'actual') {
                 data[index][field] = newValue === '' ? '' : (parseFloat(newValue) || 0);
@@ -400,19 +401,16 @@
             updateChart();
         }
 
-        // 행 추가
         function addRow() {
             const nextMonthNum = data.length + 1;
             data.push({ month: `${nextMonthNum}개월`, planned: 0, actual: '' });
             renderTable();
             updateChart();
             
-            // 스크롤 맨 아래로
             const container = document.querySelector('.overflow-y-auto');
             container.scrollTop = container.scrollHeight;
         }
 
-        // 행 삭제
         function removeRow() {
             if (data.length > 1) {
                 data.pop();
@@ -421,7 +419,6 @@
             }
         }
 
-        // 차트 그리기/업데이트
         function updateChart() {
             const ctx = document.getElementById('sCurveChart').getContext('2d');
             
@@ -464,7 +461,7 @@
                             type: 'line',
                             label: '계획 누계공정률 (%)',
                             data: plannedCumData,
-                            borderColor: '#2563eb', // Blue-600
+                            borderColor: '#2563eb',
                             backgroundColor: '#2563eb',
                             borderWidth: 3,
                             pointBackgroundColor: '#ffffff',
@@ -480,7 +477,7 @@
                             type: 'line',
                             label: '실적 누계공정률 (%)',
                             data: actualCumData,
-                            borderColor: '#dc2626', // Red-600
+                            borderColor: '#dc2626',
                             backgroundColor: '#dc2626',
                             borderWidth: 3,
                             pointBackgroundColor: '#ffffff',
@@ -497,8 +494,8 @@
                             type: 'bar',
                             label: '계획 월간공정률 (%)',
                             data: plannedMonthly,
-                            backgroundColor: 'rgba(147, 197, 253, 0.5)', // Blue-300
-                            borderColor: 'rgba(59, 130, 246, 0.7)', // Blue-500
+                            backgroundColor: 'rgba(147, 197, 253, 0.5)',
+                            borderColor: 'rgba(59, 130, 246, 0.7)',
                             borderWidth: 1,
                             borderRadius: 2,
                             yAxisID: 'y',
@@ -508,8 +505,8 @@
                             type: 'bar',
                             label: '실적 월간공정률 (%)',
                             data: actualMonthly,
-                            backgroundColor: 'rgba(252, 165, 165, 0.7)', // Red-300
-                            borderColor: 'rgba(220, 38, 38, 0.8)', // Red-600
+                            backgroundColor: 'rgba(252, 165, 165, 0.7)',
+                            borderColor: 'rgba(220, 38, 38, 0.8)',
                             borderWidth: 1,
                             borderRadius: 2,
                             yAxisID: 'y',
@@ -555,7 +552,7 @@
                                 text: '공정률 (%)'
                             },
                             min: 0,
-                            max: 100, // 누계 기준 100% 픽스
+                            max: 100,
                             grid: {
                                 color: '#e5e7eb',
                                 borderDash: [5, 5]
@@ -566,7 +563,6 @@
             });
         }
 
-        // 초기 실행
         window.onload = init;
     </script>
 </body>
