@@ -75,22 +75,26 @@
             table { 
                 width: 100% !important; 
                 border-collapse: collapse !important; 
-                font-size: 10px !important; /* 폰트 크기 축소 */
             }
             thead { display: table-header-group !important; } /* 페이지 넘어갈 때 헤더 반복 */
             tr { page-break-inside: avoid !important; }
+            
+            /* 표 내부 모든 셀의 폰트 크기를 통일 (Tailwind 클래스 무시) */
             th, td { 
                 border: 1px solid #d1d5db !important; /* 진한 선을 연한 회색으로 변경 */
                 padding: 2px 1px !important; /* 여백 축소 */
+                font-size: 10px !important; /* 셀 폰트 강제 고정 */
+                line-height: 1.2 !important;
             }
             th { background-color: #f3f4f6 !important; font-weight: bold !important; color: #000 !important; }
             
-            /* Input 태그를 일반 텍스트처럼 보이도록 변환 */
+            /* Input 태그를 일반 텍스트처럼 보이도록 변환하며 폰트 크기 통일 */
             input { 
                 border: none !important; 
                 background: transparent !important; 
                 text-align: center !important; 
-                font-size: 10px !important; 
+                font-size: 10px !important; /* 입력칸 폰트 강제 고정 */
+                line-height: 1.2 !important;
                 width: 100% !important; 
                 padding: 0 !important; 
                 margin: 0 !important; 
