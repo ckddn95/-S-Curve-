@@ -1,8 +1,18 @@
-
-
-
-
-
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>예정공정률 S-Curve 생성기</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js 최신 UMD 버전을 명시하여 전역 변수 로드 문제 해결 -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js/dist/chart.umd.min.js"></script>
+    <style>
+        /* 커스텀 스크롤바 */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb { background: #c1c1c1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #a8a8a8; }
     </style>
 </head>
 <body class="bg-gray-50 min-h-screen p-4 md:p-8 font-sans text-gray-800">
@@ -121,6 +131,13 @@
         let chartInstance = null;
 
         function init() {
+            // Chart.js 로드가 지연되는 환경을 위한 방어 코드
+            if (typeof Chart === 'undefined') {
+                console.warn('Chart.js가 아직 로드되지 않았습니다. 잠시 후 다시 시도합니다...');
+                setTimeout(init, 100);
+                return;
+            }
+
             // 저장된 데이터가 있는지 확인하고 불러오기
             const savedData = localStorage.getItem('sCurveData_v1');
             if (savedData) {
@@ -442,10 +459,6 @@
         }
 
         // 초기 실행
-        window.onload = init;
-    </script>
-</body>
-</html>
         window.onload = init;
     </script>
 </body>
