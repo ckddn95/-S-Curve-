@@ -16,24 +16,31 @@
         /* ★ 웹 & 인쇄 공통: 표 전체를 화면 높이에 꽉 차게 균등 분배 (스크롤 차단) ★ */
         #table-container {
             overflow: hidden !important; /* 스크롤바 완전히 제거 */
+            min-height: 0 !important; /* 내용물이 컨테이너를 강제로 늘리는 현상 방지 (핵심) */
+        }
+        table {
+            table-layout: fixed !important; /* 표 너비와 높이를 비율에 맞춰 강제 분배 */
         }
         #dataTableBody tr { 
-            height: 1%; /* 전체 높이를 행 개수만큼 똑같이 N등분 */
+            height: 1% !important; /* 전체 높이를 행 개수만큼 똑같이 N등분 */
         }
         #dataTableBody td { 
-            height: 1%; 
+            height: 1% !important; 
             padding: 0 !important; /* 셀 여백을 없애서 내용이 꽉 차게 함 */
+            font-size: clamp(9px, 1.8vh, 14px) !important; /* 화면 높이에 맞춰 폰트 크기 자동 조절 */
+            line-height: 1.1 !important; /* 텍스트 상하 여백 최소화 */
         }
         #dataTableBody input {
             width: 100%;
             height: 100%;
-            min-height: 14px;
+            min-height: 0 !important; /* 입력칸의 고정 최소 높이 완전히 제거 (핵심) */
             padding: 0 !important;
             margin: 0 !important;
             border: none !important;
             background: transparent !important;
             text-align: center;
             box-shadow: none !important;
+            font-size: inherit !important; /* 부모 td의 clamp 폰트 크기를 그대로 상속 */
         }
         #dataTableBody input:focus {
             background-color: #dbeafe !important;
@@ -324,23 +331,24 @@
                 const tr = document.createElement('tr');
                 tr.className = "border-b border-gray-200 hover:bg-gray-50"; 
                 
+                // Tailwind 폰트 사이즈 클래스(text-xs, text-sm)를 제거하여 clamp() 스타일이 덮어쓰이지 않도록 수정
                 tr.innerHTML = `
                     <td class="align-middle">
                         <input type="text" value="${row.month}" onchange="updateData(${index}, 'month', this.value)" 
-                               class="text-xs sm:text-sm font-medium text-gray-800">
+                               class="font-medium text-gray-800">
                     </td>
                     <td class="align-middle cell-planned border-l border-r border-white">
                         <input type="number" step="0.01" value="${row.planned}" onchange="updateData(${index}, 'planned', this.value)" 
-                               class="text-xs sm:text-sm text-blue-900">
+                               class="text-blue-900">
                     </td>
-                    <td class="font-semibold text-xs sm:text-sm ${plannedCum > 100 ? 'text-red-500' : 'text-blue-600'} align-middle">
+                    <td class="font-semibold ${plannedCum > 100 ? 'text-red-500' : 'text-blue-600'} align-middle">
                         ${plannedCum.toFixed(2)}
                     </td>
                     <td class="align-middle cell-actual border-l border-r border-white">
                         <input type="number" step="0.01" value="${row.actual}" onchange="updateData(${index}, 'actual', this.value)" placeholder="-"
-                               class="text-xs sm:text-sm text-red-900">
+                               class="text-red-900">
                     </td>
-                    <td class="font-semibold text-xs sm:text-sm text-red-600 align-middle">
+                    <td class="font-semibold text-red-600 align-middle">
                         ${actualCellHtml}
                     </td>
                 `;
