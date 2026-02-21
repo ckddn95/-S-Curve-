@@ -13,12 +13,42 @@
         ::-webkit-scrollbar-thumb { background: #c1c1c1; border-radius: 4px; }
         ::-webkit-scrollbar-thumb:hover { background: #a8a8a8; }
 
-        /* 완벽한 인쇄용 최적화 스타일 (Grid 기반 강제 고정 및 꽉 찬 레이아웃) */
+        /* ★ 웹 & 인쇄 공통: 표 전체를 화면 높이에 꽉 차게 균등 분배 (스크롤 차단) ★ */
+        #table-container {
+            overflow: hidden !important; /* 스크롤바 완전히 제거 */
+        }
+        #dataTableBody tr { 
+            height: 1%; /* 전체 높이를 행 개수만큼 똑같이 N등분 */
+        }
+        #dataTableBody td { 
+            height: 1%; 
+            padding: 0 !important; /* 셀 여백을 없애서 내용이 꽉 차게 함 */
+        }
+        #dataTableBody input {
+            width: 100%;
+            height: 100%;
+            min-height: 14px;
+            padding: 0 !important;
+            margin: 0 !important;
+            border: none !important;
+            background: transparent !important;
+            text-align: center;
+            box-shadow: none !important;
+        }
+        #dataTableBody input:focus {
+            background-color: #dbeafe !important;
+            outline: 2px solid #3b82f6 !important;
+            outline-offset: -2px;
+        }
+        /* 입력칸 배경색 (웹 화면용) */
+        .cell-planned { background-color: #eff6ff; }
+        .cell-actual { background-color: #fef2f2; }
+
+
+        /* 완벽한 인쇄용 최적화 스타일 */
         @media print {
-            /* 여백을 5mm로 줄여 한 페이지에 넉넉히 들어오도록 수정 */
             @page { size: A4 landscape; margin: 5mm; }
             
-            /* 기본 초기화 */
             body, html { 
                 background: white !important; 
                 color: black !important; 
@@ -29,10 +59,8 @@
                 width: 100% !important;
             }
             
-            /* 숨길 요소들 완벽 차단 */
             button, .print-hidden, #toastMessage { display: none !important; }
             
-            /* 메인 컨테이너 그림자/여백/크기 초기화 */
             .max-w-7xl { 
                 max-width: none !important; 
                 width: 100% !important; 
@@ -41,7 +69,6 @@
                 border-radius: 0 !important; 
             }
             
-            /* 상단 타이틀 영역 살리기 (테두리 연하게, 여백 축소) */
             .bg-blue-600 {
                 background: white !important;
                 color: black !important;
@@ -51,19 +78,17 @@
             }
             .bg-blue-600 h1 { color: black !important; font-size: 18px !important; }
 
-            /* ★ 핵심: Grid를 사용한 완벽한 1단 가로 배치 및 높이 스트레치 ★ */
+            /* Grid를 사용한 1단 가로 배치 */
             #main-wrapper {
                 display: grid !important;
                 grid-template-columns: 32% 66% !important;
                 gap: 2% !important;
-                align-items: stretch !important; /* 좌우 패널의 높이를 무조건 동일하게 강제 */
+                align-items: stretch !important;
                 height: auto !important;
                 min-height: 0 !important;
-                overflow: visible !important;
             }
             
-            /* 좌측 패널: 높이를 100%로 채우고 내부 요소를 flex로 분배 */
-            #left-panel {
+            #left-panel, #right-panel {
                 display: flex !important;
                 flex-direction: column !important;
                 height: 100% !important; 
@@ -71,69 +96,30 @@
                 padding: 0 !important;
             }
 
-            /* 우측 패널 */
-            #right-panel {
-                display: flex !important;
-                flex-direction: column !important;
-                height: 100% !important;
-                border: none !important;
-                padding: 0 !important;
-            }
-
-            /* 표의 컨테이너를 남은 세로 공간 끝까지 채우도록 강제 */
-            #table-container {
-                flex-grow: 1 !important;
-                height: 100% !important;
-                overflow: visible !important;
-                border: none !important;
-                padding: 0 !important;
-            }
-
-            /* --- 표(Table) 인쇄 디자인 --- */
             table { 
                 width: 100% !important; 
-                height: 100% !important; /* 표를 컨테이너 높이에 100% 맞춤 */
+                height: 100% !important; 
                 border-collapse: collapse !important; 
             }
-            thead { display: table-header-group !important; } /* 페이지 넘어갈 때 헤더 반복 */
+            thead { display: table-header-group !important; }
             tr { page-break-inside: avoid !important; }
             
-            /* ★ 표 내부 행 높이를 균등하게 분배 (특정 행만 커지는 현상 방지) ★ */
-            tbody tr { height: 1% !important; }
-
-            /* 표 내부 모든 셀의 폰트 크기를 통일 (Tailwind 클래스 무시) */
             th, td { 
-                border: 1px solid #d1d5db !important; /* 진한 선을 연한 회색으로 변경 */
-                padding: 2px 1px !important; /* 여백 축소 */
-                font-size: 10px !important; /* 셀 폰트 강제 고정 */
-                line-height: 1.2 !important;
+                border: 1px solid #d1d5db !important; 
+                font-size: 10px !important; 
             }
-            th { background-color: #f3f4f6 !important; font-weight: bold !important; color: #000 !important; }
+            th { background-color: #f3f4f6 !important; font-weight: bold !important; color: #000 !important; padding: 2px 1px !important;}
             
-            /* Input 태그를 일반 텍스트처럼 보이도록 변환하며 폰트 크기 통일 */
-            input { 
-                border: none !important; 
-                background: transparent !important; 
-                text-align: center !important; 
-                font-size: 10px !important; /* 입력칸 폰트 강제 고정 */
-                line-height: 1.2 !important;
-                width: 100% !important; 
-                padding: 0 !important; 
-                margin: 0 !important; 
-                color: black !important; 
-                box-shadow: none !important;
-            }
+            input { font-size: 10px !important; color: black !important; }
 
-            /* 하단 계획 누계 텍스트 박스 */
             .bg-blue-50.rounded-lg.border {
-                border: 1px solid #d1d5db !important; /* 연한 선 */
+                border: 1px solid #d1d5db !important; 
                 background: transparent !important;
                 margin-top: 5px !important;
                 padding: 5px !important;
             }
             .bg-blue-50 span { color: black !important; font-size: 11px !important; }
 
-            /* --- 우측 대시보드 및 차트 --- */
             .grid-cols-3 {
                 display: grid !important;
                 grid-template-columns: repeat(3, 1fr) !important;
@@ -141,7 +127,7 @@
                 margin-bottom: 15px !important;
             }
             .grid-cols-3 > div {
-                border: 1px solid #d1d5db !important; /* 연한 선 */
+                border: 1px solid #d1d5db !important; 
                 background: transparent !important;
                 padding: 8px !important;
                 border-radius: 0 !important;
@@ -149,7 +135,6 @@
             .grid-cols-3 p { color: black !important; }
             .text-xl, .md\:text-3xl { font-size: 1.1rem !important; }
             
-            /* 차트 컨테이너 높이 픽스 (한 페이지에 들어오도록 460px로 제한) */
             .flex-grow.relative.w-full {
                 height: 460px !important;
                 max-height: 460px !important;
@@ -172,8 +157,8 @@
             <p class="text-blue-100 text-sm mt-1 print-hidden">월별 공정률을 입력하면 누계 공정률 S-Curve가 자동으로 생성됩니다.</p>
         </div>
 
-        <!-- 메인 래퍼 (Grid 역할) - 높이 제한 해제 -->
-        <div id="main-wrapper" class="flex flex-col md:flex-row min-h-[600px] flex-grow">
+        <!-- 메인 래퍼: 높이를 화면에 맞게 고정하여 스크롤 차단 -->
+        <div id="main-wrapper" class="flex flex-col md:flex-row h-[calc(100vh-150px)] min-h-[600px] flex-grow">
             
             <!-- 좌측: 데이터 입력 부 -->
             <div id="left-panel" class="w-full md:w-1/3 border-r border-gray-200 p-4 flex flex-col h-full">
@@ -189,12 +174,11 @@
                     </div>
                 </div>
 
-                <!-- 표 래퍼를 전체 화면에서도 스크롤 없이 보여주도록 속성 변경 -->
-                <div id="table-container" class="flex-grow bg-gray-50 rounded-lg p-2 border border-gray-200 flex flex-col">
+                <!-- 표 컨테이너: overflow-hidden으로 스크롤 제거 -->
+                <div id="table-container" class="flex-grow bg-white rounded-lg border border-gray-200 flex flex-col">
                     <table class="w-full h-full text-sm text-center">
-                        <thead class="text-gray-600 sticky top-0 bg-gray-50 z-10">
+                        <thead class="text-gray-600 bg-gray-50">
                             <tr>
-                                <!-- 단위는 오직 제목에만 표기 -->
                                 <th class="pb-2 pt-2 font-medium border-b border-gray-200">기간(월)</th>
                                 <th class="pb-2 pt-2 font-medium text-blue-800 border-b border-gray-200">계획 월간(%)</th>
                                 <th class="pb-2 pt-2 font-medium text-blue-600 border-b border-gray-200">계획 누계(%)</th>
@@ -334,32 +318,29 @@
                 let actualCellHtml = '-';
                 if (row.actual !== '' && row.actual !== null) {
                     actualCum += parseFloat(row.actual) || 0;
-                    // '%' 기호 제거
                     actualCellHtml = `${actualCum.toFixed(2)}`;
                 }
                 
                 const tr = document.createElement('tr');
-                tr.className = "bg-white border-b border-gray-100 hover:bg-gray-50"; 
+                tr.className = "border-b border-gray-200 hover:bg-gray-50"; 
                 
                 tr.innerHTML = `
-                    <td class="p-1 align-middle">
-                        <!-- '개월' 제거 -->
+                    <td class="align-middle">
                         <input type="text" value="${row.month}" onchange="updateData(${index}, 'month', this.value)" 
-                               class="w-full text-center border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500 text-xs sm:text-sm p-1">
+                               class="text-xs sm:text-sm font-medium text-gray-800">
                     </td>
-                    <td class="p-1 align-middle">
+                    <td class="align-middle cell-planned border-l border-r border-white">
                         <input type="number" step="0.01" value="${row.planned}" onchange="updateData(${index}, 'planned', this.value)" 
-                               class="w-full text-center border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500 text-xs sm:text-sm p-1 bg-blue-50">
+                               class="text-xs sm:text-sm text-blue-900">
                     </td>
-                    <td class="p-1 font-semibold text-xs sm:text-sm ${plannedCum > 100 ? 'text-red-500' : 'text-blue-600'} align-middle">
-                        <!-- '%' 제거 -->
+                    <td class="font-semibold text-xs sm:text-sm ${plannedCum > 100 ? 'text-red-500' : 'text-blue-600'} align-middle">
                         ${plannedCum.toFixed(2)}
                     </td>
-                    <td class="p-1 align-middle">
+                    <td class="align-middle cell-actual border-l border-r border-white">
                         <input type="number" step="0.01" value="${row.actual}" onchange="updateData(${index}, 'actual', this.value)" placeholder="-"
-                               class="w-full text-center border-gray-300 rounded-md shadow-sm focus:border-red-500 focus:ring-red-500 text-xs sm:text-sm p-1 bg-red-50">
+                               class="text-xs sm:text-sm text-red-900">
                     </td>
-                    <td class="p-1 font-semibold text-xs sm:text-sm text-red-600 align-middle">
+                    <td class="font-semibold text-xs sm:text-sm text-red-600 align-middle">
                         ${actualCellHtml}
                     </td>
                 `;
@@ -369,7 +350,6 @@
             const finalTotal = document.getElementById('finalTotal');
             const warningText = document.getElementById('warningText');
             
-            // '%' 기호 제거
             finalTotal.innerText = `${plannedCum.toFixed(2)}`;
             if (Math.abs(plannedCum - 100) > 0.1) {
                 warningText.classList.remove('hidden');
@@ -405,7 +385,6 @@
                 ratio = (currentActual / currentPlanned) * 100;
             }
 
-            // '%' 기호 제거
             document.getElementById('sum-planned').innerText = currentPlanned.toFixed(2);
             document.getElementById('sum-actual').innerText = currentActual.toFixed(2);
             
@@ -438,13 +417,9 @@
 
         function addRow() {
             const nextMonthNum = data.length + 1;
-            // '개월' 글자 제거
             data.push({ month: `${nextMonthNum}`, planned: 0, actual: '' });
             renderTable();
             updateChart();
-            
-            // 행 추가 시 창 자체를 최하단으로 스크롤하도록 변경 (내부 스크롤이 없어졌으므로)
-            window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
         }
 
         function removeRow() {
@@ -567,11 +542,10 @@
                         tooltip: {
                             callbacks: {
                                 label: function(context) {
-                                    // 툴팁에서도 % 표시 제거, 데이터셋 라벨에서 단위를 보여줌
                                     return context.dataset.label + ': ' + context.parsed.y;
                                 },
                                 title: function(context) {
-                                    return context[0].label + '개월'; // 툴팁 상단에만 '개월' 표시
+                                    return context[0].label + '개월'; 
                                 }
                             }
                         },
