@@ -231,7 +231,7 @@
                     </div>
                     <div class="bg-gray-50 p-2 md:p-4 rounded-xl border border-gray-200 text-center shadow-sm">
                         <p class="text-[10px] md:text-xs text-gray-700 font-bold mb-1">계획대비 달성률 (%)</p>
-                        <p id="sum-ratio" class="text-lg md:text-2xl font-black text-gray-800">0.0</p>
+                        <p id="sum-ratio" class="text-lg md:text-2xl font-black text-gray-800">0.00</p>
                     </div>
                 </div>
 
@@ -335,6 +335,10 @@
                     actualCellHtml = `${actualCum.toFixed(2)}`;
                 }
                 
+                // 입력칸에도 소수점 둘째자리까지 표기 적용
+                let plannedInputVal = (row.planned !== '' && row.planned !== null) ? Number(row.planned).toFixed(2) : '';
+                let actualInputVal = (row.actual !== '' && row.actual !== null) ? Number(row.actual).toFixed(2) : '';
+                
                 const tr = document.createElement('tr');
                 tr.className = "border-b border-gray-200 hover:bg-gray-50"; 
                 
@@ -344,14 +348,14 @@
                                class="font-medium text-gray-800">
                     </td>
                     <td class="align-middle cell-planned border-l border-r border-white">
-                        <input type="number" step="0.01" value="${row.planned}" onchange="updateData(${index}, 'planned', this.value)" 
+                        <input type="number" step="0.01" value="${plannedInputVal}" onchange="updateData(${index}, 'planned', this.value)" 
                                class="text-blue-900">
                     </td>
                     <td class="font-semibold ${plannedCum > 100 ? 'text-red-500' : 'text-blue-600'} align-middle">
                         ${plannedCum.toFixed(2)}
                     </td>
                     <td class="align-middle cell-actual border-l border-r border-white">
-                        <input type="number" step="0.01" value="${row.actual}" onchange="updateData(${index}, 'actual', this.value)" placeholder="-"
+                        <input type="number" step="0.01" value="${actualInputVal}" onchange="updateData(${index}, 'actual', this.value)" placeholder="-"
                                class="text-red-900">
                     </td>
                     <td class="font-semibold text-red-600 align-middle">
@@ -408,7 +412,8 @@
                 ratioEl.innerText = '-';
                 ratioEl.className = 'text-lg md:text-2xl font-black text-gray-400';
             } else {
-                ratioEl.innerText = ratio.toFixed(1);
+                // 달성률도 소수점 둘째자리까지 고정
+                ratioEl.innerText = ratio.toFixed(2);
                 if (ratio >= 100) {
                     ratioEl.className = 'text-lg md:text-2xl font-black text-blue-600';
                 } else if (ratio >= 95) {
@@ -556,7 +561,8 @@
                         tooltip: {
                             callbacks: {
                                 label: function(context) {
-                                    return context.dataset.label + ': ' + context.parsed.y;
+                                    // 툴팁 수치도 소수점 둘째자리까지 표기
+                                    return context.dataset.label + ': ' + context.parsed.y.toFixed(2);
                                 },
                                 title: function(context) {
                                     return context[0].label + '개월'; 
